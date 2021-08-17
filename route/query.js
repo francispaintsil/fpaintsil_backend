@@ -1,30 +1,39 @@
-const Pool = require('pg').Pool
+
+require('dotenv').config()
+const {Pool }= require('pg')
+
+const isProduction = process.env.NODE_ENV === 'development'
+const connectionString =`postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_DATABASE}`
+
 const pool = new Pool({
-    user: 'postgres',
-    host: 'localhost',
-    database: 'postgres',
-    password: 'postgres',
-    port: 5432
+  connectionString: isProduction ? connectionString : connectionString
 })
+
+console.log(connectionString)
 
 const getTrainees = (request, response) =>{
     pool.query('SELECT * FROM trainees ORDER BY trainee_id ASC',(error, results) =>{
         if(error){
             throw error
         }
-        response.status(200).json(results.rows)
+        return results.rows
     })
+    response.status(200).send('success')
 }
 
+
+
 const getTraineeById = (request, response) => {
-    const trainee_id = parseInt(request.params.trainee_id)
+
+    const trainee_id = request.params.trainee_id
 
     pool.query('SELECT * FROM trainees WHERE trainee_id = $1', [trainee_id], (error, results) =>{
         if(error){
             throw error
         }
-        response.status(200).json(results.rows)
+        return results.rows
     })
+    response.status(200).send('success')
 }
 
 const createTrainee = (request, response) => {
