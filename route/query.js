@@ -12,13 +12,8 @@ const pool = new Pool({
 console.log(connectionString)
 
 const getTrainees = (request, response) =>{
-    pool.query('SELECT * FROM trainees ORDER BY trainee_id ASC',(error, results) =>{
-        if(error){
-            throw error
-        }
-        return results.rows
-    })
-    response.status(200).send('success')
+    const {rows} = pool.query('SELECT * FROM trainees ORDER BY trainee_id ASC')
+    response.json(rows)
 }
 
 
