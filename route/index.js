@@ -1,45 +1,94 @@
-const express = require('express')
-const bodyParser = require("body-parser")
-const cors = require("cors")
-const { response } = require('express');
-const db = require('./query');
-const Pool  = require('pg').Pool;
-const app = express()
+const express = require("express");
+const cors = require("cors");
+const Pool = require("pg").Pool;
+const app = express();
 const port = 5000;
 
-
-app.use(cors())
-app.use(express.json())
+app.use(cors());
+app.use(express.json());
 
 const pool = new Pool({
-  user: 'postgres',
-  password: 'postgres',
-  host: 'localhost',
-  port:'5432',
-  database:'postgres'
+  user: "postgres",
+  password: "postgres",
+  host: "localhost",
+  port: "5432",
+  database: "postgres",
 });
 
-  app.get('/trainees', async(req, res) =>{
+app.post("/admin/login", (req, res) => {
+  const { email, pword } = req.body;
+  // console.log(email, pword);
+  const { rows } = pool
+    .query(
+      `select * from users where email = '${email}' and pass_word = '${pword}' `
+    )
+    .then((d) => {
+      console.log("data => ", d);
+      res.json(d);
+    })
+    .catch((e) => {
+      console.log(res.json(e));
+    });
+});
 
-    const {rows} = await pool.query('SELECT * FROM trainees')
-    console.log(rows) 
-    res.json(rows)
-  });
+app.get("/trainees", async (req, res) => {
+  const { rows } = await pool.query("SELECT * FROM trainees");
+  console.log(rows);
+  res.json(rows);
+});
 
+app.put("/trainee/:trainee_id", async (req, res) => {
+  const {trainee_id} = req.params;
+  const {fname, lname, email, skill, speciality, detail } = req.body;   
+  console.log(fname, lname, email, skill, trainee_id)
+   let sql = `
+    UPDATE trainees SET 
+    trainee_firstname='${fname}', 
+    trainee_lastname='${lname}' , 
+    trainee_email='${email}' , 
+    trainee_skill='${skill}' ,  
+    trainee_specialty = '${speciality}' , 
+    traineeback_detail = '${detail}'
+    WHERE 
+    trainees.trainee_id = ${trainee_id} RETURNING * `;
+  await pool.query(sql)
+  .then(row=>{
+    console.log(row.rows)
+    res.json(row.rows);
+  }).catch(err=>{
+    console.log(err)
+  })
+  // console.log(fname, lname, id);
+  
+});
 
-app.put('trainee/:trainee_id', async (req, res, {trainee_id, trainee_firstname, trainee_lastname, trainee_email, trainee_skill,trainee_specialty, traineeexperience, traineeback_detail}) => {
-  const text = `UPDATE trainees SET trainee_firstname=$2, trainee_lastname=$3, trainee_email=$4, trainee_skill=$5, trainee_specialty=$6, traineeexperience=$7, traineeback_detail=$8 WHERE trainee_id = $1 RETURNING *`
-  const values = [trainee_id, trainee_firstname, trainee_lastname, trainee_email, trainee_skill,trainee_specialty, traineeexperience, traineeback_detail]
-  const rows = await pool.query(text, values);
- //console.log(rows)
-  res.json(rows)
-})
+app.delete("/trainee/delete/:id", async (req, res) => {
+  const { id } = req.params;
+  console.log(id);
+  await pool
+    .query("DELETE FROM trainees WHERE trainee_id = $1 RETURNING *", [id])
+    .then(async (e) => {
+      // console.log(e.rows)
+      const { rows } = await pool.query("select * from trainees");
+      res.json(rows);
+      console.log("After Dev ==>> ", rows);
+    });
+});
 
-app.delete('trainee/:trainee_id', async (req, res) => {
-  const {rows} = await pool.query('DELETE FROM trainee WHERE trainee_id = $1', [trainee_id])
-  res.json(rows)
-})
+app.post("/trainees/search", async (req, res) => {
+  const { value } = req.body;
+  let sql = `
+  select * from trainees where trainee_firstname like '%${value}%' 
+   or trainee_lastname like '%${value}%'
+   or trainee_email like '%${value}%'`;
+  try {
+    const { rows } = await pool.query(sql);
+    res.json(rows);
+  } catch (error) {
+    console.log(error);
+  }
+});
 
-app.listen(port, function() {
-    console.log(`Server running on port ${port}`)
-})
+app.listen(port, function () {
+  console.log(`Server running on port ${port}`);
+});
